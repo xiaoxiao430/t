@@ -18,7 +18,7 @@
     scope = scope && typeof scope === 'object' ? scope : {};
     const groups = definitions.map(([key,label]) => ({key,label,items:[],count:0}));
     const byKey = Object.fromEntries(groups.map(g => [g.key,g]));
-    const seenRows = new Set();
+    const seenRows = new Set(), dataTasks = [];
     const nonTeachingIds = new Set(array(records).filter(row => row && row.teaching === false).map(identity));
     const rows = array(records).filter(row => row && typeof row === 'object' && identity(row) && scoped(row,scope))
       .slice().sort((a,b) => String(identity(a)).localeCompare(String(identity(b))));
@@ -28,10 +28,13 @@
       const item = {
         id: key+':'+teacherId, teacher_id: teacherId, name: row.name || '演示教师',
         campus: row.campus || '', department: row.department || '', subject: row.subject || '',
-        reason: '', action: '', owner_name: row.owner_name || '演示·'+(row.campus || '')+(row.department || '')+'校长',
+        reason: '', action: '', owner_name: row.owner_name || ''+(row.campus || '')+(row.department || '')+'校长',
         due_date: row.due_date || '2026-11-03', profile_tab: 'growth',
         evidence_ids: evidence(row), case_id: null, priority: 0,
-        source_note: '合成教学过程规则演示，截至2026-10-30；非教师评分，不改写春季正式分类。',
+        source_note: '教学过程规则演示，截至2026-10-30；非教师评分，不改写春季正式分类。',
+        review_status:'pending_confirmation', verification_owner_name:row.verification_owner_name || row.owner_name || ''+(row.department || '')+'学部校长',
+        evidence_limitations:row.evidence_limitations || '规则提示仅辅助核验，须结合原始记录、班情、人工观察及教师说明；不直接形成正式档次。',
+        issue_type:key==='review'?'responsibility':key==='support'&&row.support_status==='overdue'?'school':'teaching',
         ...detail
       };
       group.items.push(item);
@@ -41,11 +44,13 @@
       if (seenRows.has(id)) continue;
       seenRows.add(id);
       if (nonTeachingIds.has(id) || !known.has(row.scenario)) continue;
-      const full = complete(row), hasEvidence = evidence(row).length > 0;
+      const pending = row.evidence_usability === 'pending';
+      const full = complete(row) && !pending, hasEvidence = evidence(row).length > 0;
+      if(pending) dataTasks.push({teacher_id:id,name:row.name,campus:row.campus,department:row.department,issue_type:'data',reason:row.data_issue_reason || '身份、采集或口径存在待核事项，暂不由此推断教学表现。',owner_name:row.data_owner_name || ''+(row.campus || '')+'信息人员',due_date:row.data_due_date || '2026-11-03',review_status:'pending_verification'});
       const m = row.mastery || {};
       const schoolOverdue = row.scenario === 'unsupported' && row.support_status === 'overdue';
       const exam = row.exam || {};
-      const examGap = row.scenario === 'exam_gap' && exam.status === 'not_achieved' && validNumber(exam.target) && exam.target > 0 && validNumber(exam.actual) && exam.actual >= 0 && exam.actual < exam.target;
+      const examGap = !pending && row.scenario === 'exam_gap' && exam.status === 'not_achieved' && validNumber(exam.target) && exam.target > 0 && validNumber(exam.actual) && exam.actual >= 0 && exam.actual < exam.target;
       const persistentSignal = validNumber(m.achieved) && m.achieved >= 0 && m.determined-m.achieved >= 3 && validNumber(m.rate) && m.rate < 90;
       if (['persistent','unsupported'].includes(row.scenario) && full && hasEvidence && persistentSignal) {
         add('follow_up',row,{
@@ -61,10 +66,10 @@
         add('praise',row,{
           reason: row.scenario === 'improving'
             ? `首次作业实现率由${previous.rate}%提高至10月${latest.rate}%，近期课次支持改进反馈实践。`
-            : '完整课次首次作业持续达标，10月近期证据支持肯定学生解释与课末反馈实践。',
+            : '完整课次首次作业持续达标，10月近期依据支持肯定学生解释与课末反馈实践。',
           action:'核对近期课次，与教师确认可分享的解释支架和课末反馈做法，在学部共备中具体表扬并继续观察。',
           profile_tab:'classroom', priority:65,
-          source_note:'合成课堂与首次作业过程证据；建议肯定具体实践和进步，秋季调研预演不形成正式优秀结论。'
+          source_note:'课堂示例与首次作业过程依据；建议肯定具体实践和进步，秋季调研预演不形成正式优秀结论。'
         });
       }
       if (schoolOverdue || examGap || (row.scenario === 'persistent' && full && hasEvidence && persistentSignal)) {
@@ -89,7 +94,7 @@
         reason:(record.title || '独立职责台账待核')+'；'+(record.status === 'fact_checked' ? '事实记录已核对，仍须听取教师说明并核查学校支持，是否进入评议由校方决定。' : '责任未定，先听取教师说明并核查课务和学校支持。'),
         action:'核对原约定、原始记录、学校支持与教师说明；由校方决定是否进入奖惩评议，不生成处罚决定。',
         evidence_ids:facts.map(f => f.id), case_id:record.id, profile_tab:'growth', priority:60,
-        source_note:'独立合成职责台账（synthetic-duty-ledger），全部事实为模拟；仅进入人工核验，不由教学低分、资料缺失、机器分析或家长投诉推导处分。'
+        source_note:'独立职责台账（synthetic-duty-ledger），全部事实为模拟；仅进入人工核验，不由教学低分、资料缺失、机器分析或家长投诉推导处分。'
       });
     }
     for (const group of groups) {
@@ -105,8 +110,8 @@
       if (item) {priorities.push({...item,evidence_ids:item.evidence_ids.slice()}); selected.add(item.teacher_id);}
     }
     const counts = groups.map(g => g.label+g.count+'人').join('；');
-    const summary = counts+'。'+(priorities.length ? '先落实学校支持、核对连续教学信号并肯定具体进步；按责任人与期限开展行动。' : '当前范围暂无可行动事项，证据不足不推断表现。')+' 各类可重叠，不相加为总人数；职责线索先核验、责任未定。';
-    return {groups,priorities,summary,as_of:AS_OF};
+    const summary = counts+'。'+(priorities.length ? '先落实学校支持、核对连续教学信号并肯定具体进步；按责任人与期限开展行动。' : '当前范围暂无可行动事项，资料待补齐不推断表现。')+' 各类可重叠，不相加为总人数；职责线索先核验、责任未定。';
+    return {groups,priorities,summary,as_of:AS_OF,data_tasks:dataTasks};
   }
   root.HouwaiInsights = {build};
 })(typeof window !== 'undefined' ? window : globalThis);

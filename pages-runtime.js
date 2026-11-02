@@ -1,4 +1,4 @@
-const PUBLIC_DEMO_VERSION = '20261103-hierarchy-v4';
+const PUBLIC_DEMO_VERSION = '20261103-human-v5';
 'use strict';
 /* Public Pages adapter: read-only, fresh synthetic snapshots, no live backend. */
 state.actor = 'group-all';
@@ -8,8 +8,8 @@ const publicData = fetch('data/index.json?v='+encodeURIComponent(publicVersion))
 const publicProfiles = new Map();
 const publicCopy = value => JSON.parse(JSON.stringify(value));
 async function publicPerson(id) {
-  if (!/^(teacher-\d{3}|staff-\d{4})$/.test(id)) throw new Error('未找到该合成人员。');
-  if (!publicProfiles.has(id)) publicProfiles.set(id, fetch(`data/people/${id}.json?v=${encodeURIComponent(publicVersion)}`).then(r => {if (!r.ok) throw new Error('未找到该合成档案。'); return r.json();}));
+  if (!/^(teacher-\d{3}|staff-\d{4})$/.test(id)) throw new Error('未找到该人员。');
+  if (!publicProfiles.has(id)) publicProfiles.set(id, fetch(`data/people/${id}.json?v=${encodeURIComponent(publicVersion)}`).then(r => {if (!r.ok) throw new Error('未找到该档案。'); return r.json();}));
   return publicCopy(await publicProfiles.get(id));
 }
 function publicRows(data, q) {
@@ -37,6 +37,21 @@ request = async function(path, options={}) {
     return {items:rows.slice((page-1)*size,page*size),total:rows.length,page,page_size:size,pages:Math.ceil(rows.length/size),scope:data.tree.scope};
   }
   if (route.startsWith('/organization/personnel/')) return publicPerson(decodeURIComponent(route.split('/').pop()));
+  if (route.startsWith('/development/')) {
+    const p=await publicPerson(route.split('/').pop());
+    if(!p.development) throw new Error('本岗位未收录教师个人目标。');
+    return publicCopy(p.development);
+  }
+  if (route==='/human-reviews/dashboard') {
+    const key=[q.get('campus')||'',q.get('department')||'',q.get('period_type')||'month',q.get('period')||'2026-10'].join('|');
+    if(!data.human_dashboards?.[key]) throw new Error('当前范围或周期未收录人工评价演示，请选择已展示的校区与学部。');
+    return publicCopy(data.human_dashboards[key]);
+  }
+  if (route.startsWith('/human-reviews/')) {
+    const p=await publicPerson(route.split('/').pop()),key=(q.get('period_type')||'month')+'|'+(q.get('period')||'2026-10');
+    if(!p.human_reviews?.[key]) throw new Error('本岗位或周期未收录人工评价；公开演示展示2026年10月短评与春季综合。');
+    return publicCopy(p.human_reviews[key]);
+  }
   if (route==='/appraisals/dashboard') return publicCopy(data.appraisal_dashboard);
   if (route.startsWith('/appraisals/')) {
     const p=await publicPerson(route.split('/').pop()),key=(q.get('period_type')||'month')+'|'+(q.get('period')||'2026-10');
@@ -57,7 +72,7 @@ layout=function(content) {
   const control=box.querySelector('.actor-control');
   if(control)control.innerHTML='<span class="tag blue">集团视角 · 公开演示</span>';
   const notice=box.querySelector('.demo-notice span:not(.demo-dot)');
-  if(notice)notice.textContent='公开只读演示 · 个人信息与评价均为合成数据 · 真实系统未接入';
+  if(notice)notice.textContent='公开只读演示 · 个人信息与评价均为演示数据 · 真实系统未接入';
   const brand=box.querySelector('.brand');if(brand)brand.setAttribute('href','#group');
   const month=box.querySelector('#appraisalMonth');if(month){month.min='2026-10';month.max='2026-10';month.title='本演示收录2026年10月';}
   return box.innerHTML;

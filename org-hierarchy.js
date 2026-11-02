@@ -88,7 +88,7 @@
     const cs=children();
     return `<section class="flow-comparison" aria-label="${org.campus?'学部':'校区'}对比"><div class="flow-section-heading"><div><h2>${org.campus?'学部对比':'三个校区 · 对比与管理重点'}</h2><p>先看组织概况，再逐层进入教师；当前人数与课堂原始分子分母按本范围汇总。</p></div><span>${cs.length} 个${org.campus?'学部':'校区'}</span></div><div class="flow-child-grid ${org.campus?'flow-departments':''}">${cs.map(s=>{
       const f=facts(s),g=f.model?.groups||[],support=g.find(x=>x.key==='support')?.count||0,missing=rows(s).filter(x=>x.scenario==='missing').length;
-      return `<article class="flow-child panel" data-flow-child="${esc(s.label)}"><header><span class="flow-kicker">${org.campus?'学部':'校区'}概况</span><h3>${esc(s.label)}</h3><p><b>${f.staff}</b> 教职工 <span>· ${f.teaching} 任教人员</span></p></header><dl class="flow-ratios"><div><dt>首次堂堂清实现率</dt><dd>${pct(f.achieved,f.determined)}</dd><small>${f.achieved} / ${f.determined} 已判定课次达标</small></div><div><dt>课堂证据覆盖</dt><dd>${pct(f.determined,f.expected)}</dd><small>${f.determined} / ${f.expected} 应评课次已判定</small></div></dl><div class="flow-ai-counts">${g.map(x=>`<span>${esc(x.label)} <b>${x.count}</b></span>`).join('')}</div><div class="flow-focus"><b>管理重点</b><p>${support?`落实 ${support} 人的优先支持与资源安排`: '保持有效做法，组织共同备课与复评'}${missing?`；补齐 ${missing} 人的课堂证据`:'；核对近期课堂的持续表现'}。</p><small>责任岗位：${esc(responsibility(s))}（合成）</small></div>${button(org.campus?'进入学部 →':'进入校区 →',s.campus,s.department,pageName(),'button flow-enter')}</article>`;
+      return `<article class="flow-child panel" data-flow-child="${esc(s.label)}"><header><span class="flow-kicker">${org.campus?'学部':'校区'}概况</span><h3>${esc(s.label)}</h3><p><b>${f.staff}</b> 教职工 <span>· ${f.teaching} 任教人员</span></p></header><dl class="flow-ratios"><div><dt>首次堂堂清实现率</dt><dd>${pct(f.achieved,f.determined)}</dd><small>${f.achieved} / ${f.determined} 已判定课次达标</small></div><div><dt>课堂记录覆盖</dt><dd>${pct(f.determined,f.expected)}</dd><small>${f.determined} / ${f.expected} 应评课次已判定</small></div></dl><div class="flow-ai-counts">${g.map(x=>`<span>${esc(x.label)} <b>${x.count}</b></span>`).join('')}</div><div class="flow-focus"><b>管理重点</b><p>${support?`落实 ${support} 人的优先支持与资源安排`: '保持有效做法，组织共同备课与复评'}${missing?`；补齐 ${missing} 人的课堂记录`:'；核对近期课堂的持续表现'}。</p><small>责任岗位：${esc(responsibility(s))}</small></div>${button(org.campus?'进入学部 →':'进入校区 →',s.campus,s.department,pageName(),'button flow-enter')}</article>`;
     }).join('')}</div></section>`;
   }
   function organizationalActions(panel) {
@@ -129,7 +129,7 @@
   }
   function judgment() {
     const f=facts(currentScope());
-    return `<section class="flow-judgment"><span class="flow-kicker">${org.department?'学部 → 教师':org.campus?'校区 → 学部':'集团 → 校区'}</span><h2>${esc(scopeLabel())}</h2><p>${f.staff} 位教职工，${f.teaching} 位任教人员。首次堂堂清按已判定课次汇总为 <b>${pct(f.achieved,f.determined)}</b>，证据覆盖 <b>${pct(f.determined,f.expected)}</b>；先落实学校支持，再核对持续教学信号与进步。</p><small>首次达标 ${f.achieved} / 已判定 ${f.determined} / 应评 ${f.expected} 课次 · 未判定保留待核，复测单列；不生成综合评分。</small></section>`;
+    return `<section class="flow-judgment"><span class="flow-kicker">${org.department?'学部 → 教师':org.campus?'校区 → 学部':'集团 → 校区'}</span><h2>${esc(scopeLabel())}</h2><p>${f.staff} 位教职工，${f.teaching} 位任教人员。首次堂堂清按已判定课次汇总为 <b>${pct(f.achieved,f.determined)}</b>，依据覆盖 <b>${pct(f.determined,f.expected)}</b>；先落实学校支持，再核对持续教学信号与进步。</p><small>首次达标 ${f.achieved} / 已判定 ${f.determined} / 应评 ${f.expected} 课次 · 未判定保留待核，复测单列；不生成综合评分。</small></section>`;
   }
   orgDashboard=function(){
     if(state.data.actor.role==='mentor')return native.orgDashboard();

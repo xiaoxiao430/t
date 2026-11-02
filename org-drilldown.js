@@ -11,7 +11,7 @@
     stable:['表现稳定','核对持续性，沉淀可分享的课堂实践。'],
     improving:['支持后改善','核对支持前后的变化，再观察新课是否稳定。'],
     persistent:['持续需要支持','复核同班科连续课次，安排共备与复评。'],
-    missing:['证据待补齐','先补齐冻结名单和缺失课次，再作判断。'],
+    missing:['依据待补齐','先补齐冻结名单和缺失课次，再作判断。'],
     unsupported:['学校支持待兑现','先由学校落实导师与课务资源，再约定复评。'],
     exam_gap:['考试目标有差距','核对原目标与同口径结果，安排专项支持。']
   };
@@ -21,7 +21,7 @@
     support:'先确认资源与责任人，跟进学校支持落实。',
     review:'仅核查独立职责线索，听取教师说明；责任尚未确定。'
   };
-  const categories = {excellent:'优秀',good:'良好',support:'重点支持',pending:'证据待齐',not_applicable:'非任教 · 不适用'};
+  const categories = {excellent:'优秀',good:'良好',support:'重点支持',pending:'资料待补齐',not_applicable:'非任教 · 不适用'};
   const inScope = (p,s) => (!s.campus || p.campus === s.campus) && (!s.department || department(p) === s.department);
   const scopeName = s => [s.campus,s.department].filter(Boolean).join(' · ') || '集团全部校区';
   const pathKey = () => JSON.stringify([view.campus,view.department]);
@@ -45,7 +45,7 @@
     if (!count) return '当前范围无符合此条件的人员；保留零值，不推断教学质量。';
     if (view.kind === 'ai') return focuses[view.key];
     if (view.kind === 'scenario') return scenarios[view.key][1];
-    if (view.category) return ({excellent:'回看春季正式依据，提炼可分享实践。',good:'回看春季正式依据，持续跟进成长。',support:'按春季完整学期依据，核对后续支持落实。',pending:'补核春季完整学期证据，不推断表现。',not_applicable:'保留基础档案；教学评价不适用。'})[view.category];
+    if (view.category) return ({excellent:'回看春季正式依据，提炼可分享实践。',good:'回看春季正式依据，持续跟进成长。',support:'按春季完整学期依据，核对后续支持落实。',pending:'补核春季完整学期依据，不推断表现。',not_applicable:'保留基础档案；教学评价不适用。'})[view.category];
     return '核对人员与教育背景事实，按需查看档案。';
   }
   function children() {
@@ -69,7 +69,7 @@
   function person(p) {
     const key = id(p), profile = data.people.find(x => x.id === key) || p;
     const reason = p.reason || p.focus || (view.category ? `2026年春季 · ${categories[view.category]}（最新完整学期已发布结论）` : `${view.title} · ${view.basis === 'undergraduate' ? '本科学历院校' : '最高已获学历院校'}口径`);
-    const source = p.source_note || (view.kind === 'scenario' ? '秋季合成教学与支持过程情境，截至2026-10-30；与春季正式分层分别展示。' : view.category ? '春季完整学期冻结依据 · 合成演示，非当前学期评价。' : '合成人员事实档案；荣誉及证书按人员去重。');
+    const source = p.source_note || (view.kind === 'scenario' ? '秋季教学与支持过程情境，截至2026-10-30；与春季正式分层分别展示。' : view.category ? '春季完整学期冻结依据 · 演示，非当前学期评价。' : '人员事实档案；荣誉及证书按人员去重。');
     const links = view.kind === 'ai' ? `<button class="text-link" data-ins-proof="${h(p.id)}">${p.case_id?'核查责任事实':'查看依据与行动'} ↗</button><button class="text-link" data-ins-person="${h(key)}" data-ins-tab="${h(p.profile_tab || 'growth')}">查看档案 ↗</button>` : `<button class="text-link" ${view.kind==='scenario'?'data-demo-open':'data-org-open'}="${h(key)}">查看档案 ↗</button>`;
     return `<article class="drill-person" data-drill-person="${h(key)}"><header>${typeof avatar==='function'?avatar(profile,'table-avatar'):''}<div><strong>${h(p.name)}</strong><span>${h(key)} · ${h(department(p))} · ${h(p.subject || p.position || '非任教岗位')}</span></div></header><p>${h(reason)}</p>${p.action?`<p><b>行动</b> ${h(p.action)}</p>`:''}<small>来源：${h(source)}</small><footer>${links}</footer></article>`;
   }
@@ -82,7 +82,7 @@
   function body() {
     const rows = unique(selected()).filter(p => inScope(p,view)), total = denominator(view), percent = total ? (rows.length/total*100).toFixed(1)+'%' : '—';
     const canBack = view.department && !view.base.department || view.campus && !view.base.campus;
-    return `<section class="org-drilldown" data-drill-kind="${view.kind}" data-drill-view="${view.department?'teachers':view.campus?'departments':'campuses'}">${crumbs()}<div class="drill-heading"><div><span class="drill-kicker">${h(view.period)}</span><h2>${h(view.title)}</h2><p>${h(scopeName(view))}</p></div><div class="drill-total"><strong data-drill-total="${rows.length}">${rows.length}<small>人</small></strong><span>${rows.length} / ${total} · ${percent}</span></div></div><p class="drill-method">分母：${view.kind==='hr'?'当前组织全体教职工':'当前组织任教人员（非任教岗位不适用）'} ${total} 人。${view.kind==='hr'&&!view.category?`学历与院校采用${view.basis==='undergraduate'?'本科':'最高已获'}学历口径。`:''}全部为合成数据，只读浏览。</p>${view.department?roster(rows):distribution(rows)}<footer class="drill-footer">${canBack?'<button class="text-link" data-drill-back>← 返回上一级分布</button>':'<span>组织分布逐级查看</span>'}<button class="text-link" data-drill-close>关闭并返回原页面</button></footer></section>`;
+    return `<section class="org-drilldown" data-drill-kind="${view.kind}" data-drill-view="${view.department?'teachers':view.campus?'departments':'campuses'}">${crumbs()}<div class="drill-heading"><div><span class="drill-kicker">${h(view.period)}</span><h2>${h(view.title)}</h2><p>${h(scopeName(view))}</p></div><div class="drill-total"><strong data-drill-total="${rows.length}">${rows.length}<small>人</small></strong><span>${rows.length} / ${total} · ${percent}</span></div></div><p class="drill-method">分母：${view.kind==='hr'?'当前组织全体教职工':'当前组织任教人员（非任教岗位不适用）'} ${total} 人。${view.kind==='hr'&&!view.category?`学历与院校采用${view.basis==='undergraduate'?'本科':'最高已获'}学历口径。`:''}全部为演示数据，只读浏览。</p>${view.department?roster(rows):distribution(rows)}<footer class="drill-footer">${canBack?'<button class="text-link" data-drill-back>← 返回上一级分布</button>':'<span>组织分布逐级查看</span>'}<button class="text-link" data-drill-close>关闭并返回原页面</button></footer></section>`;
   }
   function update() {
     const host = document.querySelector('#overlay-root .modal-body');if (!host) return;
@@ -94,7 +94,7 @@
     view = {base:{...base},campus:base.campus || '',department:base.department || '',basis:org.basis,saved:new Map()};
     if (el.hasAttribute('data-ins-category')) {
       view.kind='ai';view.key=el.dataset.insCategory;
-      view.title=window.HouwaiInsights.build(data.management || [],data.management_cases || [],{}).groups.find(g=>g.key===view.key)?.label || 'AI管理提示';view.period='AI管理提示 · 合成规则 · 需人工确认';
+      view.title=window.HouwaiInsights.build(data.management || [],data.management_cases || [],{}).groups.find(g=>g.key===view.key)?.label || 'AI管理提示';view.period='AI管理提示 · 演示规则 · 需人工确认';
     } else if (el.hasAttribute('data-demo-scenario')) {
       view.kind='scenario';view.key=el.dataset.demoScenario;view.title=scenarios[view.key]?.[0] || '教学情境';view.period='2026年秋季 · 教学与支持过程';
     } else {
@@ -102,7 +102,7 @@
       if (view.facet==='subject'&&view.value==='true') view.facet='teaching';
       const label = el.querySelector('.drill-original-label')?.textContent || el.querySelector('span')?.textContent || el.textContent;
       view.title=view.category?`${categories[view.category]} · 春季正式分层`:view.facet?label.trim().replace(/\s*[↗→]\s*$/,''):'教职工总数';
-      view.period=view.category?'2026年春季 · 最新完整学期 · 正式已发布':'人员结构 · 合成事实档案';
+      view.period=view.category?'2026年春季 · 最新完整学期 · 正式已发布':'人员结构 · 事实档案';
     }
     openModal(`${view.title} · 组织分布`,body(),'集团 → 校区 → 学部 → 教师',true);
     document.querySelector('#overlay-root .modal')?.classList.add('drill-dialog');
