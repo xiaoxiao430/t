@@ -1,4 +1,4 @@
-const PUBLIC_DEMO_VERSION = '20261103-insights-v3';
+const PUBLIC_DEMO_VERSION = '20261103-hierarchy-v4';
 'use strict';
 /* Public Pages adapter: read-only, fresh synthetic snapshots, no live backend. */
 state.actor = 'group-all';
