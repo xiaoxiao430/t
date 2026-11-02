@@ -1,13 +1,15 @@
+const PUBLIC_DEMO_VERSION = '20261102-evidence-v2';
 'use strict';
 /* Public Pages adapter: read-only, fresh synthetic snapshots, no live backend. */
 state.actor = 'group-all';
 if (!location.hash || location.hash === '#') history.replaceState(null, '', '#group');
-const publicData = fetch('data/index.json').then(r => {if (!r.ok) throw new Error('演示资料暂未读取，请刷新重试。'); return r.json();});
+const publicVersion = typeof PUBLIC_DEMO_VERSION === 'undefined' ? '20261102-evidence-v2' : PUBLIC_DEMO_VERSION;
+const publicData = fetch('data/index.json?v='+encodeURIComponent(publicVersion)).then(r => {if (!r.ok) throw new Error('演示资料暂未读取，请刷新重试。'); return r.json();});
 const publicProfiles = new Map();
 const publicCopy = value => JSON.parse(JSON.stringify(value));
 async function publicPerson(id) {
   if (!/^(teacher-\d{3}|staff-\d{4})$/.test(id)) throw new Error('未找到该合成人员。');
-  if (!publicProfiles.has(id)) publicProfiles.set(id, fetch(`data/people/${id}.json`).then(r => {if (!r.ok) throw new Error('未找到该合成档案。'); return r.json();}));
+  if (!publicProfiles.has(id)) publicProfiles.set(id, fetch(`data/people/${id}.json?v=${encodeURIComponent(publicVersion)}`).then(r => {if (!r.ok) throw new Error('未找到该合成档案。'); return r.json();}));
   return publicCopy(await publicProfiles.get(id));
 }
 function publicRows(data, q) {
