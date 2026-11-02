@@ -7,7 +7,7 @@
   const usageLabels={usable:'可用于评价',reference:'仅供参考',pending:'待核实'};
   const categoryLabels={excellent:'优秀',good:'良好',support:'重点支持',pending:'资料待补齐',pending_review:'待评价',not_applicable:'不适用'};
   const issueLabels={data:'系统与数据',teaching:'教育教学',school:'学校支持'};
-  const actionLabels={draft:'更新综合短评',professional:'专业初评',evidence:'核验依据',issue:'安排跟进', 'issue-resolve':'完成跟进',confirm:'校长确认',respond:'教师回应','assign-reviewer':'指定独立复核人',resolve:'独立复核',revise:'开启修订',archive:'归档','development-profile':'个人特点','development-goals':'个人目标','development-progress':'目标进展'};
+  const actionLabels={draft:'更新综合短评',professional:'专业初评',evidence:'核验依据',issue:'安排跟进', 'issue-resolve':'完成跟进',confirm:'校长确认',respond:'教师回应','assign-reviewer':'指定独立复核人',resolve:'独立复核',revise:'开启修订',archive:'归档','development-profile':'个人特点','development-goals':'个人目标','development-progress':'目标进展','development-tags':'个人标签'};
   if(typeof ROLE!=='undefined'){ROLE.teaching_leader='教研组';ROLE.information_officer='信息核验';ROLE.independent_reviewer='独立复核';}
   const safe=x=>esc(x==null?'':String(x));
   const arr=x=>Array.isArray(x)?x:[];
@@ -67,7 +67,7 @@
   }
   function inject(){
     if(!state.data)return;
-    const c=profileContext();if(c){const target=document.querySelector('.org-profile-body');if(target&&!document.getElementById('humanReviewCard')){const s=cache.get(keyFor(c));target.insertAdjacentHTML('afterbegin',s?profileCard(s,c):placeholder(c));if(!s)load(c);const dc={teacher:c.teacher,development:true};if(!['information_officer','independent_reviewer'].includes(actor().role)){const ds=cache.get(keyFor(dc));target.insertAdjacentHTML('afterbegin',ds?developmentCard(ds):developmentPlaceholder(dc));if(!ds)load(dc);}}return;}
+    const c=profileContext();if(c){const target=document.querySelector('.org-profile-body');if(target&&!document.getElementById('humanReviewCard')){const s=cache.get(keyFor(c));target.insertAdjacentHTML('afterbegin',s?profileCard(s,c):placeholder(c));if(!s)load(c);const dc={teacher:c.teacher,development:true};if(!['information_officer','independent_reviewer'].includes(actor().role)){const ds=cache.get(keyFor(dc));target.insertAdjacentHTML('afterbegin',ds?developmentCard(ds):developmentPlaceholder(dc));if(ds)injectIdentity(ds,c);else load(dc);}}return;}
     const d=dashboardContext();if(!d)return;const target=document.querySelector('.flow-main')||document.querySelector('.org-main');if(target&&!document.getElementById('humanOrganizationPanel')){const s=cache.get(keyFor(d));target.insertAdjacentHTML('afterbegin',s?dashboardPanel(s,d):placeholder(d,true));if(!s)load(d);else if(!restrictedRole())load({...d,type:'semester',period:'2026-spring'});}
   }
   function restrictedRender(){
@@ -79,6 +79,15 @@
     $('#app').innerHTML=layout(content);if(!s)load(scope);
   }
   const originalRender=render;render=function(){if(state.data&&restrictedRole())return restrictedRender();const result=originalRender.apply(this,arguments);inject();return result;};
+  const identityGroups=[['characteristics','特点'],['strengths','优势'],['specialties','特长'],['potential','发展潜力']];
+  function injectIdentity(s,c){
+    if(s.teacher_id!==c.teacher)return;
+    const name=document.querySelector('.profile-hero .profile-name');if(!name)return;
+    name.querySelector('[data-hu-identity]')?.remove();
+    const tags=s.profile?.identity_tags||{},has=identityGroups.some(([key])=>arr(tags[key]).length);
+    const html=`<div class="hu-identity-tags" data-hu-identity="${safe(c.teacher)}" aria-label="教师本人填写的特点、优势、特长与发展潜力">${has?identityGroups.map(([key,label])=>`<span class="hu-identity-group"><span class="hu-identity-label">${label}</span>${arr(tags[key]).length?arr(tags[key]).slice(0,2).map(value=>`<span class="hu-identity-tag">${safe(value)}</span>`).join(''):'<span class="hu-identity-pending">待本人补充</span>'}</span>`).join(''):'<span class="hu-identity-pending">特点、优势、特长与发展潜力 · 待本人补充</span>'}<span class="hu-identity-source">本人填写</span>${!isPublic()&&s.capabilities?.edit_profile?'<button class="text-link" data-hu-development-action="tags">编辑标签</button>':''}</div>`;
+    const line=name.querySelector('.profile-name-line');if(line)line.insertAdjacentHTML('afterend',html);else name.insertAdjacentHTML('beforeend',html);
+  }
   function developmentPlaceholder(c){const error=errors.get(keyFor(c));return `<section id="teacherDevelopmentCard" class="hu-panel hu-loading" data-hu-loaded="false"><h2>我的特点与成长目标</h2><p>${error?safe(error):'正在读取教师本人填写的特点、学期目标与学年目标…'}</p></section>`;}
   function currentDevelopment(){const c=profileContext();return c?cache.get(keyFor({teacher:c.teacher,development:true})):null;}
   function developmentCard(s){
@@ -88,10 +97,11 @@
   function goalPeriods(type){return type==='year'?[['2026-2027','2026—2027学年'],['2027-2028','2027—2028学年']]:[['2026-fall','2026年秋季学期'],['2027-spring','2027年春季学期']];}
   function openDevelopment(action,id=''){
     const s=currentDevelopment();if(!s||isPublic())return;const p=s.profile||{},goal=arr(s.goals).find(g=>g.id===id);let body='';
-    if(action==='profile')body='<p class="hu-note">从自己的实践、优势和发展意愿出发填写。这里只记录本人观点，不替代校方评价。</p>'+text('characteristics','我的特点',p.characteristics)+text('strengths','擅长的事',p.strengths)+text('growth_focus','正在提升',p.growth_focus)+text('support_preference','希望得到的支持',p.support_preference);
+    if(action==='tags')body='<p class="hu-note">每类最多2个短标签，每个1—12字，用逗号分隔。按本人理解填写；发展潜力描述希望继续发展的方向，不作固定判断。</p>'+identityGroups.map(([key,label])=>input('tags_'+key,label,arr(p.identity_tags?.[key]).join('，'),'text',false)).join('');
+    else if(action==='profile')body='<p class="hu-note">从自己的实践、优势和发展意愿出发填写。这里只记录本人观点，不替代校方评价。</p>'+text('characteristics','我的特点',p.characteristics)+text('strengths','擅长的事',p.strengths)+text('growth_focus','正在提升',p.growth_focus)+text('support_preference','希望得到的支持',p.support_preference);
     else if(action==='goals')body=select('period_type','目标期间',[['semester','学期目标'],['year','学年目标']],hu.goalType)+select('period','目标所属期间',goalPeriods(hu.goalType),hu.goalType==='year'?'2026-2027':'2026-fall')+input('title','目标名称')+text('baseline','当前起点')+text('target','希望达到的具体变化')+text('actions','我准备怎样实践')+text('support_needed','希望学校或同伴提供什么支持')+input('due_date','回看目标的日期',hu.goalType==='year'?'2027-08-31':'2027-01-20','date');
     else if(action==='progress'&&goal)body=`<input type="hidden" name="goal_id" value="${safe(goal.id)}"><p class="hu-note">${safe(goal.title)}：追加新的实践与调整说明，原目标和已有记录继续保留。</p>`+text('text','已做的实践、观察到的变化或调整原因')+text('next_step','下一步准备怎么做')+select('status','当前目标状态',[['active','实践中'],['achieved','已达成'],['adjusting','调整中']],goal.status||'active');
-    else return;show(action==='profile'?'编辑我的特点':action==='goals'?'制定学期／学年目标':'记录目标进展与调整',body,'development-'+action);
+    else return;show(action==='tags'?'编辑姓名旁的个人标签':action==='profile'?'编辑我的特点':action==='goals'?'制定学期／学年目标':'记录目标进展与调整',body,'development-'+action);
   }
   function currentSummary(){const c=profileContext();return c?cache.get(keyFor(c)):null;}
   function close(){const modal=document.getElementById('humanReviewOverlay');modal?.remove();hu.modal=null;if(hu.returnFocus?.isConnected)hu.returnFocus.focus();}
@@ -154,7 +164,8 @@
     if(['professional','issue'].includes(action))data.evidence_ids=f.getAll('evidence_ids');
     if(action==='respond')data.conflict_actor_ids=f.getAll('conflict_actor_ids');
     if(action.startsWith('development-')){
-      const endpoint=action.slice('development-'.length);data={teacher_id:ctx.teacher,...v};
+      let endpoint=action.slice('development-'.length);data={teacher_id:ctx.teacher,...v};
+      if(endpoint==='tags'){endpoint='profile';const tags={};for(const [key,label] of identityGroups){const values=String(v['tags_'+key]||'').split(/[,，、]+/).map(value=>value.trim()).filter(Boolean);if(values.length>2||values.some(value=>[...value].length>12))throw Error(label+'最多填写2个，每个1—12字。');tags[key]=values;}data={teacher_id:ctx.teacher,identity_tags:tags};}
       await post('/development/'+endpoint,data);if(who!==state.actor)return;if(endpoint==='goals')hu.goalType=v.period_type;
       cache.delete(keyFor({teacher:ctx.teacher,development:true}));errors.delete(keyFor({teacher:ctx.teacher,development:true}));close();render();toast('个人特点与目标记录已保存。');return;
     }
