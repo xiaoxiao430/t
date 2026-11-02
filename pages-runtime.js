@@ -1,4 +1,4 @@
-const PUBLIC_DEMO_VERSION = '20261102-evidence-v2';
+const PUBLIC_DEMO_VERSION = '20261103-insights-v3';
 'use strict';
 /* Public Pages adapter: read-only, fresh synthetic snapshots, no live backend. */
 state.actor = 'group-all';
