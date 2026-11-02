@@ -1,4 +1,4 @@
-const PUBLIC_DEMO_VERSION = '20261103-growth-v6';
+const PUBLIC_DEMO_VERSION = '20261103-profile-v7';
 'use strict';
 /* Public Pages adapter: read-only, fresh synthetic snapshots, no live backend. */
 state.actor = 'group-all';
